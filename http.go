@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 )
 
@@ -22,6 +23,7 @@ type Endpoint struct {
 	URLParameters map[string]Parameter
 	Headers       map[string]string
 	JSONString    bool
+	Multipart     bool
 }
 
 // Parameter is used to provide URL Parameters to zoho endpoints
@@ -69,6 +71,7 @@ func (z *Zoho) HTTPRequest(endpoint *Endpoint) (err error) {
 		// Choose whether to send a multipart encoded data or a simple payload
 		if endpoint.JSONString {
 			var b bytes.Buffer
+
 			w := multipart.NewWriter(&b)
 			fw, err := w.CreateFormField("JSONString")
 			if err != nil {
@@ -88,7 +91,52 @@ func (z *Zoho) HTTPRequest(endpoint *Endpoint) (err error) {
 			}
 			// Set the content type which contains the multipart boundary
 			req.Header.Set("Content-Type", w.FormDataContentType())
-		} else {
+		}
+		/*
+		 else if endpoint.Multipart {
+			var b bytes.Buffer
+			var fw io.Writer
+
+			w := multipart.NewWriter(&b)
+
+			v := reflect.ValueOf(reqBody)
+			values := make([]interface{}, v.NumField())
+
+			for i := 0; i < v.NumField(); i++ {
+				//	values[i] = v.Field(i).Interface()
+				//}
+
+				//for key, r := range values {
+				// Add an image file
+				f := v.Field(i)
+				if x, ok := f.Interface().(*os.File); ok {
+					fw, err = w.CreateFormFile(f.Tag.Get("json"), x.Name())
+				} else {
+					fw, err = w.CreateFormField(f.Tag.Get("json"))
+				}
+				//fw, err := w.CreateFormField("JSONString")
+				if err != nil {
+					return err
+				}
+				if _, err = io.Copy(fw, f.Value()); err != nil {
+					return err
+				}
+			}
+
+			// Close the multipart writer to set the terminating boundary
+			err = w.Close()
+			if err != nil {
+				return err
+			}
+			req, err = http.NewRequest(string(endpoint.Method), fmt.Sprintf("%s?%s", endpointURL, q.Encode()), &b)
+			if err != nil {
+				return fmt.Errorf("Failed to create a request for %s: %s", endpoint.Name, err)
+			}
+			// Set the content type which contains the multipart boundary
+			req.Header.Set("Content-Type", w.FormDataContentType())
+
+		} 			*/
+		else {
 			req, err = http.NewRequest(string(endpoint.Method), fmt.Sprintf("%s?%s", endpointURL, q.Encode()), reqBody)
 			if err != nil {
 				return fmt.Errorf("Failed to create a request for %s: %s", endpoint.Name, err)

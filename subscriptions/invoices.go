@@ -1,7 +1,9 @@
 package subscriptions
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 
 	zoho "github.com/schmorrison/Zoho"
 )
@@ -101,13 +103,24 @@ func (s *API) GetInvoice(id string) (data InvoiceResponse, err error) {
 // AddAttachment attaches a file to an invoice
 // https://www.zoho.com/subscriptions/api/v1/#Invoices_Add_attachment_to_an_invoice
 func (s *API) AddAttachment(id, file string, canSendInEmail bool) (data AttachementResponse, err error) {
+	//buff, err := ioutil.ReadFile(file)
+	f, err := os.Open(file)
+	if err != nil {
+		return AttachementResponse{}, err
+	}
+
+	req := AttachmentRequest{CanSendInEmail: canSendInEmail, Attachement: f}
+
+	reqJson, _ := json.Marshal(req)
+	fmt.Println("Attachment request:", string(reqJson))
 
 	endpoint := zoho.Endpoint{
 		Name:         "invoices",
 		URL:          fmt.Sprintf("https://subscriptions.zoho.%s/api/v1/invoices/%s/attachment", s.ZohoTLD, id),
 		Method:       zoho.HTTPPost,
 		ResponseData: &AttachementResponse{},
-		RequestBody:  AttachmentRequest{CanSendInEmail: canSendInEmail},
+		JSONString:   true,
+		RequestBody:  req,
 		Headers: map[string]string{
 			ZohoSubscriptionsOriganizationID: s.OrganizationID,
 		},
@@ -432,7 +445,8 @@ type EmailInvoiceResponse struct {
 }
 
 type AttachmentRequest struct {
-	CanSendInEmail bool `json:"can_send_in_mail"`
+	CanSendInEmail bool     `json:"can_send_in_mail"`
+	Attachement    *os.File `json:"attachment"`
 }
 
 type AttachementResponse struct {
